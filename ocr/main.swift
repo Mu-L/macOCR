@@ -75,23 +75,46 @@ let inputURL = URL(fileURLWithPath: "/tmp/ocr.png")
 var recognitionLanguages = ["en-US"]
 
 do {
-    
-    
+
+
     let arguments = Array(CommandLine.arguments.dropFirst())
 
     let parser = ArgumentParser(usage: "<options>", overview: "macOCR is a command line app that enables you to turn any text on your screen into text on your clipboard")
-    
+
+    let listLanguagesOption = parser.add(option: "--list-languages", kind: Bool.self, usage: "List supported OCR languages")
+
     if(bigSur){
         let languageOption = parser.add(option: "--language", shortName: "-l", kind: String.self, usage: "Set Language (Supports Big Sur and Above)")
-        
-        
+
+
         let parsedArguments = try parser.parse(arguments)
+
+        // Check if user wants to list languages
+        if parsedArguments.get(listLanguagesOption) == true {
+            if #available(macOS 11.0, *) {
+                let languages = try VNRecognizeTextRequest.supportedRecognitionLanguages(for: .accurate, revision: VNRecognizeTextRequestRevision2)
+                print("Supported languages (accurate):")
+                for lang in languages {
+                    print("  \(lang)")
+                }
+            } else {
+                print("en-US (language detection requires macOS 11.0+)")
+            }
+            exit(EXIT_SUCCESS)
+        }
+
         let language = parsedArguments.get(languageOption)
-        
+
         if (language ?? "").isEmpty{
-            
+
         }else{
             recognitionLanguages.insert(language!, at: 0)
+        }
+    } else {
+        let parsedArguments = try parser.parse(arguments)
+        if parsedArguments.get(listLanguagesOption) == true {
+            print("en-US (language detection requires macOS 11.0+)")
+            exit(EXIT_SUCCESS)
         }
     }
 
