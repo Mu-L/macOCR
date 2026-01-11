@@ -71,7 +71,6 @@ func detectText(fileName : URL) -> [CIFeature]? {
 
 
 
-let inputURL = URL(fileURLWithPath: "/tmp/ocr.png")
 var recognitionLanguages = ["en-US"]
 
 do {
@@ -83,8 +82,12 @@ do {
 
     let listLanguagesOption = parser.add(option: "--list-languages", kind: Bool.self, usage: "List supported OCR languages")
     let rectOption = parser.add(option: "--rect", shortName: "-R", kind: String.self, usage: "Capture specific region: x,y,width,height (no interactive selection)")
+    let inputFileOption = parser.add(option: "--input", shortName: "-i", kind: String.self, usage: "Use image file instead of screen capture")
+    let saveImageOption = parser.add(option: "--save-image", shortName: "-s", kind: String.self, usage: "Save captured screenshot to specified path")
 
     var rectValues: (x: Int, y: Int, w: Int, h: Int)? = nil
+    var inputFile: String? = nil
+    var saveImagePath: String? = nil
 
     if(bigSur){
         let languageOption = parser.add(option: "--language", shortName: "-l", kind: String.self, usage: "Set Language (Supports Big Sur and Above)")
@@ -117,6 +120,12 @@ do {
             }
         }
 
+        // Parse input file option
+        inputFile = parsedArguments.get(inputFileOption)
+
+        // Parse save image option
+        saveImagePath = parsedArguments.get(saveImageOption)
+
         let language = parsedArguments.get(languageOption)
 
         if (language ?? "").isEmpty{
@@ -141,16 +150,47 @@ do {
                 exit(EXIT_FAILURE)
             }
         }
+
+        // Parse input file option
+        inputFile = parsedArguments.get(inputFileOption)
+
+        // Parse save image option
+        saveImagePath = parsedArguments.get(saveImageOption)
     }
 
-    // Capture screen region
-    if let rect = rectValues {
-        let _ = ScreenCapture.captureRect(destination: "/tmp/ocr.png", x: rect.x, y: rect.y, width: rect.w, height: rect.h)
+    // Determine the image to process
+    var imageURL: URL
+
+    if let input = inputFile {
+        // Use provided image file
+        let inputPath = (input as NSString).expandingTildeInPath
+        imageURL = URL(fileURLWithPath: inputPath)
+        if !FileManager.default.fileExists(atPath: imageURL.path) {
+            print("Error: Input file does not exist: \(input)")
+            exit(EXIT_FAILURE)
+        }
     } else {
-        let _ = ScreenCapture.captureRegion(destination: "/tmp/ocr.png")
+        // Capture screen region
+        let tempPath = "/tmp/ocr.png"
+        if let rect = rectValues {
+            let _ = ScreenCapture.captureRect(destination: tempPath, x: rect.x, y: rect.y, width: rect.w, height: rect.h)
+        } else {
+            let _ = ScreenCapture.captureRegion(destination: tempPath)
+        }
+        imageURL = URL(fileURLWithPath: tempPath)
+
+        // Save image if requested
+        if let savePath = saveImagePath {
+            let expandedPath = (savePath as NSString).expandingTildeInPath
+            do {
+                try FileManager.default.copyItem(atPath: tempPath, toPath: expandedPath)
+            } catch {
+                print("Warning: Could not save image to \(savePath): \(error.localizedDescription)")
+            }
+        }
     }
 
-    if let features = detectText(fileName : inputURL), !features.isEmpty{}
+    if let features = detectText(fileName: imageURL), !features.isEmpty{}
 
 } catch {
     // handle parsing error
