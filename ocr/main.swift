@@ -13,7 +13,7 @@ import ScreenCapture
 import ArgumentParserKit
 
 
-var joiner = " "
+var joiner = "\n"
 var bigSur = false;
 
 if #available(OSX 11, *) {

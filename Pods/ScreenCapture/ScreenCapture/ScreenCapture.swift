@@ -30,7 +30,7 @@ public func captureRegion(destination: NSURL) -> NSURL {
     
     let task = Process()
     task.launchPath = "/usr/sbin/screencapture"
-    task.arguments = ["-i", "-r", destinationPath]
+    task.arguments = ["-i", "-r", "-x", destinationPath]
     task.launch()
     task.waitUntilExit()
     
